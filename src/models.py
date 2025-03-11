@@ -18,7 +18,7 @@ def _check_params(Iext: jnp.ndarray, N: int):
 
 # @partial(jax.vmap, in_axes=(0, 0, 0))
 def _ode(Z: np.complex128, a: float, w: float):
-    return Z * (a + 1j * w - jnp.abs(Z * Z))
+    return Z * (a + 1j * w - jnp.abs(Z) ** 2)
 
 
 def simulate(
@@ -35,6 +35,46 @@ def simulate(
     decim: int = 1,
     stim_mode: str = "amp",
 ):
+    """
+    Simulates a network of coupled oscillators with external stimulation.
+
+    Parameters:
+    ----------
+    A : np.ndarray
+        Adjacency matrix representing network connectivity.
+    g : float
+        Coupling strength parameter.
+    f : float
+        Natural frequency of oscillators.
+    a : float
+        Nonlinear parameter influencing oscillator dynamics.
+    fs : float
+        Sampling frequency.
+    eta : float
+        Noise intensity.
+    T : float
+        Total simulation time in discrete steps.
+    Iext : np.ndarray, optional
+        External input to the oscillators (default is None, meaning no input).
+    seed : int, optional
+        Random seed for noise generation (default is 0).
+    device : str, optional
+        Computational device, either "cpu" or "gpu" (default is "cpu").
+    decim : int, optional
+        Decimation factor for downsampling the output (default is 1, meaning no downsampling).
+    stim_mode : str, optional
+        Stimulation mode, can be "amp" (amplitude), "phase", or "both" (default is "amp").
+
+    Returns:
+    -------
+    np.ndarray
+        Array of oscillator phases over time, with shape (N, T/decim), where N is the number of nodes.
+
+    Notes:
+    ------
+    - Uses JAX for optimized computation, supporting CPU and GPU execution.
+    - Implements stochastic differential equations for phase oscillator dynamics.
+    """
 
     assert stim_mode in ["amp", "phase", "both"]
     assert device in ["cpu", "gpu"]
@@ -45,11 +85,6 @@ def simulate(
 
     g = _check_params(g, T).squeeze()
     Iext = _check_params(Iext, N)
-
-    # if Iext is None:
-    #    Iext = jnp.zeros((N, T))
-    # else:
-    #    Iext = jnp.asarray(Iext)  # Assure it is a jax ndarray
 
     # Stim parameters
     gain = 0
@@ -126,11 +161,6 @@ def simulate_delayed(
 
     g = _check_params(g, T).squeeze()
     Iext = _check_params(Iext, N)
-
-    # if Iext is None:
-    #    Iext = jnp.zeros((N, T))
-    # else:
-    #    Iext = jnp.asarray(Iext)  # Assure it is a jax ndarray
 
     # Stim parameters
     gain = 0
