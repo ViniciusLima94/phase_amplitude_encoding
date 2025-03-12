@@ -59,7 +59,7 @@ def _set_nodes(A: np.ndarray, f: float, fs: float, a: float):
     # phases = dt * np.ones((N, 1)) + 1j * dt * np.ones((N, 1))
     # phases[1:] = 0 * phases[1:]
 
-    phases = dt * np.random.normal(size=(N, 1)) + 1j * dt * np.random.normal(
+    phases = 1e-4 * np.random.uniform(size=(N, 1)) + 1j * 1e-4 * np.random.uniform(
         size=(N, 1)
     )
 

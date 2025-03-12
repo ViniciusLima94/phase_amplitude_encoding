@@ -106,7 +106,7 @@ def simulate(
     eta = eta * jnp.sqrt(dt)
     Iext = Iext * dt
 
-    @jax.jit
+    # @jax.jit
     def _loop(carry, t):
 
         phases_history = carry
@@ -118,7 +118,7 @@ def simulate(
         exp_phi = gain * jnp.exp(1j * (jnp.angle(phases_t) + phi)) + offset
 
         # Input to each node
-        Input = (g[t] * A * phase_differences).sum(axis=1) + Iext[:, t] * exp_phi
+        Input = g[t] * (A * phase_differences).sum(axis=1) + Iext[:, t] * exp_phi
 
         phases_history = phases_history.at[:, 0].set(
             phases_t
