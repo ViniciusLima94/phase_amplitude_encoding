@@ -6,7 +6,7 @@ import os
 
 # Root path containing the coordinates file
 _ROOT = os.path.expanduser(
-    "~/storage1/projects/GrayData-Analysis/GDa/flatmap")
+    "~/projects/phase_amplitude_encoding/src/flatmap")
 
 
 def plot_flatmap(ax):
