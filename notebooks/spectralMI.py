@@ -257,3 +257,143 @@ def spectralMI(
     )
 
     return conn
+
+
+
+import numpy as np
+import xarray as xr
+import scipy
+from frites.conn import conn_io
+from frites.io import check_attrs, logger, set_log_level
+from frites.utils import parallel_func
+from mne.filter import filter_data
+from mne.time_frequency import psd_array_multitaper
+
+
+def xr_psd_array_multitaper(data, bandwidth=1.0, n_jobs=1, fmin=0.1, fmax=80):
+    _, roi, _ = data.trials.values, data.roi.values, data.time.values
+
+    psds_c, freqs, _ = psd_array_multitaper(
+        data,
+        data.fsample,
+        fmin=fmin,
+        fmax=fmax,
+        n_jobs=n_jobs,
+        bandwidth=bandwidth,
+        output="complex",
+    )
+
+    # Spectra
+    sxx = (psds_c * np.conj(psds_c)).mean((0, 2)).real
+
+    sxx = xr.DataArray(sxx, dims=("roi", "freqs"), coords=(roi, freqs))
+
+    return sxx
+
+
+def _coh(w, x_s, x_t, kw_para):
+    """Pairwise coherence."""
+    # auto spectra (faster that w * w.conj())
+    s_auto = (w.real**2 + w.imag**2).mean((0, 2))
+
+    # define the pairwise coherence
+    def pairwise_coh(w_x, w_y):
+        # computes the coherence
+        s_xy = (w[:, w_y, :, :] * np.conj(w[:, w_x, :, :])).mean((0, 1))
+        s_xx = s_auto[w_x]
+        s_yy = s_auto[w_y]
+        return np.abs(s_xy) ** 2 / (s_xx * s_yy)
+
+    # define the function to compute in parallel
+    parallel, p_fun = parallel_func(pairwise_coh, **kw_para)
+
+    # compute the single trial coherence
+    return parallel(p_fun(s, t) for s, t in zip(x_s, x_t))
+
+
+def conn_spec_average(
+    data,
+    fmin=None,
+    fmax=None,
+    roi=None,
+    sfreq=None,
+    bandwidth=None,
+    decim=1,
+    kw_mt={},
+    block_size=None,
+    n_jobs=-1,
+    verbose=None,
+    dtype=np.float32,
+    **kw_links,
+):
+    set_log_level(verbose)
+
+    # _________________________________ INPUTS ________________________________
+    # inputs conversion
+    kw_links.update({"directed": False, "net": False})
+    data, cfg = conn_io(
+        data,
+        times=None,
+        roi=roi,
+        agg_ch=False,
+        win_sample=None,
+        block_size=block_size,
+        sfreq=sfreq,
+        freqs=None,
+        foi=None,
+        sm_times=None,
+        sm_freqs=None,
+        verbose=verbose,
+        name="Spectral connectivity (metric = coh)",
+        kw_links=kw_links,
+    )
+
+    # extract variables
+    x, trials, attrs = data.data, data["y"].data, cfg["attrs"]
+    times, _ = data["times"].data, len(trials)
+    x_s, x_t, roi_p = cfg["x_s"], cfg["x_t"], cfg["roi_p"]
+    _, sfreq = cfg["blocks"], cfg["sfreq"]
+    n_pairs = len(x_s)
+
+    kw_para = dict(n_jobs=n_jobs, verbose=verbose, total=n_pairs)
+
+    # temporal decimation
+    times = times[::decim]
+
+    # define arguments for parallel computing
+    # mesg = "Estimating pairwise coh for trials %s"
+    kw_para = dict(n_jobs=n_jobs, verbose=verbose, total=n_pairs)
+
+    # show info
+    logger.info(f"Computing pairwise coh (n_pairs={n_pairs}, " f"decim={decim}")
+
+    # --------------------------- TIME-FREQUENCY --------------------------
+    # time-frequency decomposition
+    w, f_vec, _ = psd_array_multitaper(
+        x[..., ::decim],
+        sfreq // decim,
+        fmin=fmin,
+        fmax=fmax,
+        n_jobs=n_jobs,
+        bandwidth=bandwidth,
+        output="complex",
+        **kw_mt,
+    )
+    # ______________________ CONTAINER FOR CONNECTIVITY _______________________
+    dims = ("roi", "freqs")
+    coords = (roi_p, f_vec)
+
+    conn = _coh(w, x_s, x_t, kw_para)
+
+    # configuration
+    cfg = dict(
+        sfreq=sfreq,
+        mt_bandwidth=bandwidth,
+        decim=decim,
+    )
+
+    # conversion
+    conn = xr.DataArray(
+        conn, dims=dims, name="coh", coords=coords, attrs=check_attrs({**attrs, **cfg})
+    )
+    return conn.astype(dtype)

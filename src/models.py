@@ -84,6 +84,7 @@ def simulate(
     N, A, omegas, phases_history, dt, a = _set_nodes(A, f, fs, a)
 
     g = _check_params(g, T).squeeze()
+    eta = _check_params(eta, N).squeeze()
     Iext = _check_params(Iext, N)
 
     # Stim parameters
@@ -160,6 +161,7 @@ def simulate_delayed(
     N, A, D, omegas, phases_history, dt, a = _set_nodes_delayed(A, D, f, fs, a)
 
     g = _check_params(g, T).squeeze()
+    eta = _check_params(eta, N).squeeze()
     Iext = _check_params(Iext, N)
 
     # Stim parameters
