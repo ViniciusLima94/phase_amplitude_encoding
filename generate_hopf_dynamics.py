@@ -22,9 +22,9 @@ os.environ["XLA_PYTHON_CLIENT_ALLOCATOR"] = "platform"
 ##############################################################################
 
 parser = argparse.ArgumentParser(description="Generate Hopf simulaitons")
-parser.add_argument("--f", type=float, default=1, help="nodes oscillating frequency")
-parser.add_argument("--a", type=float, default=-3.0, help="nodes hopf parameter")
-parser.add_argument("--g", type=float, default=1, help="global coupling scaling")
+parser.add_argument("--f", type=float, default=40, help="nodes oscillating frequency")
+parser.add_argument("--a", type=float, default=-5.0, help="nodes hopf parameter")
+parser.add_argument("--g", type=float, default=10, help="global coupling scaling")
 parser.add_argument("--eta", type=float, default=1, help="exitatory scaling")
 parser.add_argument("--ntrials", type=int, default=500, help="number of trials")
 parser.add_argument("--dt", type=float, default=1e-4, help="integration time step")
