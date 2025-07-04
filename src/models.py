@@ -20,6 +20,8 @@ def _check_params(Iext: jnp.ndarray, N: int):
 def _ode(Z: np.complex128, a: float, w: float):
     return Z * (a + 1j * w - jnp.abs(Z) ** 2)
 
+def ode_spikes(v, vr, tau):
+    return -(v - vr) / tau
 
 def simulate(
     A: np.ndarray,
