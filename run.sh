@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #SBATCH -J proc              # Job name
-#SBATCH -o .out/job_%a.out   # Name of stdout output file (%j expands to %jobID)
+#SBATCH -o log.out   # Name of stdout output file (%j expands to %jobID)
 #SBATCH --ntasks=1
 #SBATCH --mem-per-cpu=2000
 #SBATCH --cpus-per-task=40
