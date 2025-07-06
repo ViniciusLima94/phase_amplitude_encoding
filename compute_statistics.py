@@ -17,6 +17,7 @@ parser.add_argument("--f", type=float, default=40, help="nodes oscillating frequ
 parser.add_argument("--a", type=float, default=-5.0, help="nodes hopf parameter")
 parser.add_argument("--g", type=float, default=10, help="global coupling scaling")
 parser.add_argument("--eta", type=float, default=1, help="exitatory scaling")
+parser.add_argument("--term", type=str, default=0, help="amp")
 parser.add_argument("--seed", type=int, default=0, help="seed used")
 args = parser.parse_args()
 
@@ -134,6 +135,7 @@ if __name__ == "__main__":
     a = args.a
     g = args.g
     eta = args.eta
+    term = args.term
     seed = args.seed
 
     # Number of permutations
@@ -142,6 +144,10 @@ if __name__ == "__main__":
     data = xr.open_dataarray(
         os.path.join("Results", "dynamics", get_file_name(f, a, g, eta, seed))
     )
+
+    if term == "amp":
+        data.values = np.abs(data.values)
+
     y = data.attrs["y"]
 
     syn, p_syn, t_syn = SRMMI_for_subject(data, y, n_perm, "syn")
