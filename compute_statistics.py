@@ -125,7 +125,7 @@ def SRMMI_for_subject(data, y, n_perm, hoi_type):
 
 
 def get_file_name(f, a, g, eta, seed):
-    return (f"data_f_{f}_a_{a}_g_{g}_eta_{eta}_seed_{seed}.nc",)
+    return f"data_f_{f}_a_{a}_g_{g}_eta_{eta}_seed_{seed}.nc"
 
 
 if __name__ == "__main__":
