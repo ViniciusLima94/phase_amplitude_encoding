@@ -20,8 +20,10 @@ def _check_params(Iext: jnp.ndarray, N: int):
 def _ode(Z: np.complex128, a: float, w: float):
     return Z * (a + 1j * w - jnp.abs(Z) ** 2)
 
-def ode_spikes(v, vr, tau):
-    return -(v - vr) / tau
+
+def _ode_kuramoto(w: float):
+    return w
+
 
 def simulate(
     A: np.ndarray,
@@ -129,6 +131,102 @@ def simulate(
             + Input
             + eta * randn(size=(N,), seed=seed + t)
             + eta * 1j * randn(size=(N,), seed=seed + t + 2 * t)
+        )
+
+        carry = jax.lax.reshape(phases_history, (N, 1))
+        return carry, phases_history
+
+    _, phases = jax.lax.scan(_loop, (phases_history), times)
+
+    return phases[::decim].squeeze().T
+
+
+def simulate_kuramoto(
+    A: np.ndarray,
+    g: float,
+    f: float,
+    fs: float,
+    eta: float,
+    T: float,
+    Iext: np.ndarray = None,
+    seed: int = 0,
+    device: str = "cpu",
+    decim: int = 1,
+):
+    """
+    Simulates a network of coupled oscillators with external stimulation.
+
+    Parameters:
+    ----------
+    A : np.ndarray
+        Adjacency matrix representing network connectivity.
+    g : float
+        Coupling strength parameter.
+    f : float
+        Natural frequency of oscillators.
+    fs : float
+        Sampling frequency.
+    eta : float
+        Noise intensity.
+    T : float
+        Total simulation time in discrete steps.
+    Iext : np.ndarray, optional
+        External input to the oscillators (default is None, meaning no input).
+    seed : int, optional
+        Random seed for noise generation (default is 0).
+    device : str, optional
+        Computational device, either "cpu" or "gpu" (default is "cpu").
+    decim : int, optional
+        Decimation factor for downsampling the output (default is 1, meaning no downsampling).
+
+    Returns:
+    -------
+    np.ndarray
+        Array of oscillator phases over time, with shape (N, T/decim), where N is the number of nodes.
+
+    Notes:
+    ------
+    - Uses JAX for optimized computation, supporting CPU and GPU execution.
+    - Implements stochastic differential equations for phase oscillator dynamics.
+    """
+
+    assert device in ["cpu", "gpu"]
+
+    jax.config.update("jax_platform_name", device)
+
+    N, A, omegas, phases_history, dt, _ = _set_nodes(A, f, fs, 0)
+
+    # For Kuramoto phases_history is cast to float
+    phases_history = phases_history.real
+
+    # Normalize by the number of nodes (see Kuramoto equation)
+    g = _check_params(g, T).squeeze() / N
+    eta = _check_params(eta, N).squeeze()
+    Iext = _check_params(Iext, N)
+
+    times = np.arange(T, dtype=int)  # Time array
+
+    # Scale with dt to avoid doing it evert time-step
+    A = A * dt
+    eta = eta * jnp.sqrt(dt)
+    Iext = Iext * dt
+
+    # @jax.jit
+    def _loop(carry, t):
+
+        phases_history = carry
+
+        phases_t = phases_history.squeeze().copy()
+
+        phase_differences = phases_t - phases_history
+
+        Input = g[t] * (A * phase_differences).sum(axis=1) + Iext[:, t]
+
+        phases_history = phases_history.at[:, 0].set(
+            phases_t
+            + dt * _ode_kuramoto(omegas)
+            + Input
+            + eta * randn(size=(N,), seed=seed + t)
         )
 
         carry = jax.lax.reshape(phases_history, (N, 1))
