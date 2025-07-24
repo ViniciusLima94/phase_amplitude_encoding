@@ -21,10 +21,6 @@ def _ode(Z: np.complex128, a: float, w: float):
     return Z * (a + 1j * w - jnp.abs(Z) ** 2)
 
 
-def _ode_kuramoto(w: float):
-    return w
-
-
 def simulate(
     A: np.ndarray,
     g: float,
@@ -194,10 +190,15 @@ def simulate_kuramoto(
 
     jax.config.update("jax_platform_name", device)
 
-    N, A, omegas, phases_history, dt, _ = _set_nodes(A, f, fs, 0)
+    N, A, omegas, _, dt, _ = _set_nodes(A, f, fs, 0)
 
     # For Kuramoto phases_history is cast to float
-    phases_history = phases_history.real
+    # Randomly initialize phases and keeps it only up to max delay
+    phases_history = 2 * jnp.pi * np.random.rand(N, 1) + dt * omegas[:, None] * np.ones(
+        (N, 1)
+    ) * np.ones(1)
+    # From 0 to 2\pi
+    phases_history = phases_history % (2 * jnp.pi)
 
     # Normalize by the number of nodes (see Kuramoto equation)
     g = _check_params(g, T).squeeze() / N
@@ -218,15 +219,12 @@ def simulate_kuramoto(
 
         phases_t = phases_history.squeeze().copy()
 
-        phase_differences = phases_t - phases_history
+        phase_differences = jnp.sin(phases_t - phases_history)
 
         Input = g[t] * (A * phase_differences).sum(axis=1) + Iext[:, t]
 
         phases_history = phases_history.at[:, 0].set(
-            phases_t
-            + dt * _ode_kuramoto(omegas)
-            + Input
-            + eta * randn(size=(N,), seed=seed + t)
+            phases_t + dt * omegas + Input + eta * randn(size=(N,), seed=seed + t)
         )
 
         carry = jax.lax.reshape(phases_history, (N, 1))
@@ -234,7 +232,7 @@ def simulate_kuramoto(
 
     _, phases = jax.lax.scan(_loop, (phases_history), times)
 
-    return phases[::decim].squeeze().T
+    return jnp.sin(phases)[::decim].squeeze().T
 
 
 def simulate_delayed(
