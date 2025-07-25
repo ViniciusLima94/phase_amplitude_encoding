@@ -192,14 +192,6 @@ def simulate_kuramoto(
 
     N, A, omegas, _, dt, _ = _set_nodes(A, f, fs, 0)
 
-    # For Kuramoto phases_history is cast to float
-    # Randomly initialize phases and keeps it only up to max delay
-    phases_history = 2 * jnp.pi * np.random.rand(N, 1) + dt * omegas[:, None] * np.ones(
-        (N, 1)
-    ) * np.ones(1)
-    # From 0 to 2\pi
-    phases_history = phases_history % (2 * jnp.pi)
-
     # Normalize by the number of nodes (see Kuramoto equation)
     g = _check_params(g, T).squeeze() / N
     eta = _check_params(eta, N).squeeze()
@@ -211,6 +203,13 @@ def simulate_kuramoto(
     A = A * dt
     eta = eta * jnp.sqrt(dt)
     Iext = Iext * dt
+    omegas *= dt
+
+    # For Kuramoto phases_history is cast to float
+    # Randomly initialize phases and keeps it only up to max delay
+    phases_history = (
+        2 * np.pi * np.random.rand(N, 1) + omegas[:, None] * np.arange(1, 2)
+    ) % (2 * np.pi)
 
     # @jax.jit
     def _loop(carry, t):
@@ -224,7 +223,7 @@ def simulate_kuramoto(
         Input = g[t] * (A * phase_differences).sum(axis=1) + Iext[:, t]
 
         phases_history = phases_history.at[:, 0].set(
-            phases_t + dt * omegas + Input + eta * randn(size=(N,), seed=seed + t)
+            phases_t + omegas + Input + eta * randn(size=(N,), seed=seed + t)
         )
 
         carry = jax.lax.reshape(phases_history, (N, 1))
@@ -232,7 +231,10 @@ def simulate_kuramoto(
 
     _, phases = jax.lax.scan(_loop, (phases_history), times)
 
-    return jnp.sin(phases)[::decim].squeeze().T
+    phases_fft = jnp.fft.fft(jnp.sin(phases), n=T, axis=0)
+    phases = jnp.fft.ifft(phases_fft, axis=0).real
+
+    return phases[::decim].squeeze().T
 
 
 def simulate_delayed(
