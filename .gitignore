@@ -1,3 +1,5 @@
 *.nc
 *.pyc
 *.png
+*.pdf
+*.svg
