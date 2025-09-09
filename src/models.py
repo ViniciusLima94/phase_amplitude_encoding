@@ -139,6 +139,7 @@ def simulate(
 
 def simulate_kuramoto(
     A: np.ndarray,
+    D: np.ndarray,
     g: float,
     f: float,
     fs: float,
@@ -156,6 +157,8 @@ def simulate_kuramoto(
     ----------
     A : np.ndarray
         Adjacency matrix representing network connectivity.
+    D : np.ndarray
+        Delay matrix in time-steps
     g : float
         Coupling strength parameter.
     f : float
@@ -190,7 +193,7 @@ def simulate_kuramoto(
 
     jax.config.update("jax_platform_name", device)
 
-    N, A, omegas, _, dt, _ = _set_nodes(A, f, fs, 0)
+    N, A, D, max_delay, omegas, _, dt, _ = _set_nodes_delayed(A, f, fs, 0)
 
     # Normalize by the number of nodes (see Kuramoto equation)
     g = _check_params(g, T).squeeze() / N
@@ -208,26 +211,39 @@ def simulate_kuramoto(
     # For Kuramoto phases_history is cast to float
     # Randomly initialize phases and keeps it only up to max delay
     phases_history = (
-        2 * np.pi * np.random.rand(N, 1) + omegas[:, None] * np.arange(1, 2)
+        2 * np.pi * np.random.rand(N, max_delay) + omegas[:, None] * np.arange(1, 2)
     ) % (2 * np.pi)
+
+    # Nodes indexes
+    nodes = jnp.arange(N)
 
     # @jax.jit
     def _loop(carry, t):
 
         phases_history = carry
 
-        phases_t = phases_history.squeeze().copy()
+        # phases_t = phases_history.squeeze().copy()
+        # phase_differences = jnp.sin(phases_t - phases_history)
 
-        phase_differences = jnp.sin(phases_t - phases_history)
+        phases_t = phases_history[:, -1].copy()
+
+        @partial(jax.vmap, in_axes=(0, 0))
+        def _return_phase_differences(n, d):
+            return jnp.sin(phases_history[np.indices(d.shape)[0], d - 1] - phases_t[n])
+
+        phase_differences = _return_phase_differences(nodes, D)
 
         Input = g[t] * (A * phase_differences).sum(axis=1) + Iext[:, t]
 
-        phases_history = phases_history.at[:, 0].set(
+        phases_history = phases_history.at[:, :-1].set(phases_history[:, 1:])
+
+        phases_history = phases_history.at[:, -1].set(
             phases_t + omegas + Input + eta * randn(size=(N,), seed=seed + t)
         )
 
-        carry = jax.lax.reshape(phases_history, (N, 1))
-        return carry, phases_history
+        # carry = jax.lax.reshape(phases_history, (N, 1))
+        carry = phases_history
+        return carry, phases_history[:, -1]
 
     _, phases = jax.lax.scan(_loop, (phases_history), times)
 
