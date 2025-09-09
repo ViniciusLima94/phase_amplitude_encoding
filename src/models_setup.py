@@ -123,4 +123,4 @@ def _set_nodes_delayed(A: np.ndarray, D: np.ndarray, f: float, fs: float, a: flo
         size=(N, max_delay)
     )
 
-    return N, A, D, omegas, jnp.asarray(phases).astype(jnp.complex128), dt, a
+    return N, A, D, max_delay, omegas, jnp.asarray(phases).astype(jnp.complex128), dt, a
