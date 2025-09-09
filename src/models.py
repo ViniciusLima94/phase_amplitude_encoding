@@ -193,7 +193,7 @@ def simulate_kuramoto(
 
     jax.config.update("jax_platform_name", device)
 
-    N, A, D, max_delay, omegas, _, dt, _ = _set_nodes_delayed(A, f, fs, 0)
+    N, A, D, max_delay, omegas, _, dt, _ = _set_nodes_delayed(A, D, f, fs, 0)
 
     # Normalize by the number of nodes (see Kuramoto equation)
     g = _check_params(g, T).squeeze() / N
