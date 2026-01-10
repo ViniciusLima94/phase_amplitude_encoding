@@ -217,15 +217,21 @@ def simulate_kuramoto(
     # Nodes indexes
     nodes = jnp.arange(N)
 
+    init_key = jax.random.PRNGKey(seed)
+
     # @jax.jit
     def _loop(carry, t):
 
-        phases_history = carry
+        phases_history, key = carry
 
         # phases_t = phases_history.squeeze().copy()
         # phase_differences = jnp.sin(phases_t - phases_history)
 
         phases_t = phases_history[:, -1].copy()
+
+        # Noise
+        key = jax.random.fold_in(key, t)
+        noise = jax.random.normal(key, (N,))
 
         @partial(jax.vmap, in_axes=(0, 0))
         def _return_phase_differences(n, d):
@@ -238,14 +244,14 @@ def simulate_kuramoto(
         phases_history = phases_history.at[:, :-1].set(phases_history[:, 1:])
 
         phases_history = phases_history.at[:, -1].set(
-            phases_t + omegas + Input + eta * randn(size=(N,), seed=seed + t)
+            phases_t + omegas + Input + eta * noise
         )
 
         # carry = jax.lax.reshape(phases_history, (N, 1))
-        carry = phases_history
+        carry = (phases_history, key)
         return carry, phases_history[:, -1]
 
-    _, phases = jax.lax.scan(_loop, (phases_history), times)
+    _, phases = jax.lax.scan(_loop, (phases_history, init_key), times)
 
     phases_fft = jnp.fft.fft(jnp.sin(phases), n=T, axis=0)
     phases = jnp.fft.ifft(phases_fft, axis=0).real
