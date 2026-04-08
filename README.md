@@ -227,24 +227,3 @@ done
 **Structural connectivity** (FLN matrix and area coordinates) is derived from the macaque cortical hierarchy reported in Markov et al. (2013) and is included in the `interareal/` directory.
 
 No proprietary or access-restricted datasets are required to reproduce the figures.
-
----
-
-## Citation
-
-If you use this code or data in your work, please cite the associated manuscript (citation to be added upon publication) and this repository:
-
-```
-@software{lima2024_phase_amplitude,
-  author  = {Lima, Vinicius},
-  title   = {Phase–Amplitude Encoding in Neural Dynamics},
-  url     = {https://github.com/ViniciusLima94/phase_amplitude_encoding},
-  year    = {2024}
-}
-```
-
----
-
-## License
-
-See `LICENSE` for details. If no license file is present, please contact the authors before redistributing.
