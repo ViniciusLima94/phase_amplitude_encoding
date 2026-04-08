@@ -214,7 +214,7 @@ done
 | Module | Purpose |
 |---|---|
 | Oscillator / coupling definitions | Implements the Hopf normal-form equations and inter-node coupling |
-| Numerical integration | Fixed-step or adaptive ODE solvers used by `generate_hopf_dynamics.py` |
+| Numerical integration | Fixed-step or adaptive ODE solvers |
 | Information-theoretic measures | Mutual information, redundancy, and synergy estimators (2- and 3-plets) |
 | Plotting utilities | `plot.Background`, `plot.add_panel_letters`, and other helpers shared across figure notebooks |
 
