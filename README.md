@@ -222,8 +222,4 @@ done
 
 ## Data
 
-**Simulated data** is produced by `generate_hopf_dynamics.py` and stored under `Results/`.
-
 **Structural connectivity** (FLN matrix and area coordinates) is derived from the macaque cortical hierarchy reported in Markov et al. (2013) and is included in the `interareal/` directory.
-
-No proprietary or access-restricted datasets are required to reproduce the figures.
